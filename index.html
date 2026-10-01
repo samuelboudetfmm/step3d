@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Step3D — annotation de la marche</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect width='16' height='16' rx='4' fill='%232fbf8f'/><text x='8' y='12' font-size='10' font-family='sans-serif' fill='%23060b14' text-anchor='middle' font-weight='bold'>S</text></svg>">
+<link rel="stylesheet" href="style.css">
+<script src="config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+<div id="app">
+
+  <!-- Colonne gauche : sujets -->
+  <aside id="sidebar">
+    <div id="logo">
+      <div class="logo-carre">S</div>
+      <div class="logo-titre">Step3D</div>
+    </div>
+    <div class="libelle-section">Sujets</div>
+    <div id="liste-sujets"></div>
+    <button id="btn-nouveau-sujet" class="bouton-large">+ Nouveau sujet</button>
+    <div class="pousse"></div>
+    <div id="carte-parametres">
+      <div class="titre-carte">Paramètres de l'essai</div>
+      <div class="ligne-param"><span>Cadence</span><b id="param-cadence">—</b></div>
+      <div class="ligne-param"><span>Appui G</span><b id="param-appui-g">—</b></div>
+      <div class="ligne-param"><span>Appui D</span><b id="param-appui-d">—</b></div>
+    </div>
+  </aside>
+
+  <!-- Colonne centrale : vue 3D -->
+  <main id="centre">
+    <header id="entete">
+      <div>
+        <h1 id="titre-essai">Choisissez un essai</h1>
+        <div id="sous-titre-essai" class="sous-titre"></div>
+      </div>
+      <div id="actions-essai">
+        <button id="btn-export" class="bouton" disabled>⤓ Export Excel</button>
+        <button id="btn-enregistrer" class="bouton accent" disabled>Enregistrer<span id="rond-modifie"></span></button>
+      </div>
+    </header>
+
+    <div id="zone-3d">
+      <canvas id="canvas-3d"></canvas>
+
+      <div id="carte-info" hidden>
+        <div class="ligne-info">Image <b id="info-image">–</b> / <span id="info-total">–</span> · <span id="info-temps">–</span></div>
+        <div class="ligne-info">Pied gauche : <b id="info-gauche">–</b></div>
+        <div class="ligne-info">Pied droit : <b id="info-droit">–</b></div>
+      </div>
+
+      <div id="legende">
+        <span class="puce puce-gauche"></span> Gauche
+        <span class="puce puce-droite"></span> Droit
+        <span class="puce puce-bassin"></span> Bassin
+      </div>
+
+      <div id="barre-lecture">
+        <div id="ligne-controles">
+          <div id="controles">
+            <button id="btn-debut" class="bouton-rond" title="Début">⏮</button>
+            <button id="btn-moins1" class="bouton-rond" title="Image précédente (←)">◀|</button>
+            <button id="btn-lecture" class="bouton-rond gros" title="Lecture / pause (Espace)">▶</button>
+            <button id="btn-plus1" class="bouton-rond" title="Image suivante (→)">|▶</button>
+            <button id="btn-fin" class="bouton-rond" title="Fin">⏭</button>
+            <span id="affichage-temps" class="temps-mono">00:00.00</span>
+          </div>
+          <div id="vitesses">
+            <button data-vitesse="0.25" class="bouton-vitesse">¼×</button>
+            <button data-vitesse="0.5" class="bouton-vitesse">½×</button>
+            <button data-vitesse="1" class="bouton-vitesse actif">1×</button>
+            <button data-vitesse="2" class="bouton-vitesse">2×</button>
+          </div>
+        </div>
+        <div id="pistes">
+          <canvas id="piste-g" class="piste"></canvas>
+          <canvas id="piste-d" class="piste"></canvas>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Colonne droite : événements -->
+  <aside id="panneau-droit">
+    <div class="entete-evenements">
+      <span class="titre-carte">Événements</span>
+      <span id="compte-evenements" class="compte">0</span>
+    </div>
+    <div id="grille-boutons-evts">
+      <button class="bouton-evt pose-g" data-pied="G" data-type="pose">▼ Pose G</button>
+      <button class="bouton-evt lever-g" data-pied="G" data-type="lever">▲ Lever G</button>
+      <button class="bouton-evt pose-d" data-pied="D" data-type="pose">▼ Pose D</button>
+      <button class="bouton-evt lever-d" data-pied="D" data-type="lever">▲ Lever D</button>
+    </div>
+    <div id="liste-evenements"></div>
+    <div id="carte-raccourcis">
+      <div class="titre-carte">Raccourcis</div>
+      <div class="ligne-raccourci"><kbd>Espace</kbd><span>lecture / pause</span></div>
+      <div class="ligne-raccourci"><kbd>← →</kbd><span>image précédente / suivante</span></div>
+      <div class="ligne-raccourci"><kbd>Z Q S D</kbd><span>se déplacer dans la vue 3D</span></div>
+      <div class="ligne-raccourci"><kbd>W</kbd><span>pose + lever gauche</span></div>
+      <div class="ligne-raccourci"><kbd>B</kbd><span>pose + lever droit</span></div>
+      <div class="ligne-raccourci"><kbd>Ctrl Z</kbd><span>annuler</span></div>
+    </div>
+  </aside>
+</div>
+
+<dialog id="boite-dialogue">
+  <form id="formulaire-dialogue" method="dialog">
+    <h2 id="dialogue-titre">—</h2>
+    <div id="dialogue-corps"></div>
+    <div class="boutons-dialogue">
+      <button type="button" id="btn-dialogue-annuler" class="bouton">Annuler</button>
+      <button type="submit" id="btn-dialogue-ok" class="bouton accent">OK</button>
+    </div>
+  </form>
+</dialog>
+
+<div id="toast" hidden></div>
+
+<script type="module" src="app.js"></script>
+</body>
+</html>
